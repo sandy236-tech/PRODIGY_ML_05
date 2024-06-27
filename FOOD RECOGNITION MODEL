@@ -1,0 +1,39 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+# Define the CNN model for food recognition
+cnn_model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(num_classes, activation='softmax')  # num_classes is the number of food categories
+])
+
+# Define the regression model for estimating calorie content
+regression_model = models.Sequential([
+    layers.Dense(64, activation='relu', input_shape=(128,)),  # 128 is the output size of the CNN model's Dense layer
+    layers.Dense(1)  # Output layer for calorie estimation
+])
+
+# Combined model
+image_input = layers.Input(shape=(224, 224, 3))
+features = cnn_model(image_input)
+calorie_output = regression_model(features)
+
+combined_model = models.Model(inputs=image_input, outputs=[features, calorie_output])
+
+# Compile the model
+combined_model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'], metrics=['accuracy'])
+
+# Train the model
+combined_model.fit(X_train, [y_train_classification, y_train_regression], epochs=10, batch_size=32)
+
+# Evaluate the model
+loss, classification_loss, regression_loss, classification_accuracy, regression_mae = combined_model.evaluate(X_test, [y_test_classification, y_test_regression])
+print(f'Classification Accuracy: {classification_accuracy}, Regression MAE: {regression_mae}')
+
+# Save the model for deployment
+combined_model.save('food_recognition_calorie_estimation_model.h5')
